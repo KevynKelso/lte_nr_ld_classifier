@@ -33,5 +33,7 @@ def classification_network():
     model.compile(
         optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
     )
+    # Note, model name is set for saving
+    model.friendly_name = "classifier_v1"
 
     return model

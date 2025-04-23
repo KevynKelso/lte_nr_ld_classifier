@@ -31,12 +31,15 @@ def train_network(model):
         validation_split=VAL_SPLIT,
         verbose=1,
     )
+    model.save(f"{model.friendly_name}.keras")
+
     plt.plot(history.history["accuracy"], label="Training Accuracy")
     plt.plot(history.history["val_accuracy"], label="Validation Accuracy")
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
     plt.legend()
     plt.show()
+    plt.savefig("history.png")
 
     test_loss, test_acc = model.evaluate(X_test, y_test_onehot, verbose=0)
     print(f"\nTest Accuracy: {test_acc:.4f}")
@@ -49,4 +52,3 @@ def train_network(model):
 
     print("\nConfusion Matrix:")
     print(confusion_matrix(y_test, y_pred_classes))
-    # save as sd5

@@ -14,6 +14,7 @@ import numpy as np
 import requests
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 DATA_URIS = [
     "https://www.mathworks.com/supportfiles/spc/SpectrumSensing/SpectrumSensingTrainingData128x128.zip",
@@ -94,8 +95,7 @@ def format_for_logistic_regression():
                 class_dir = join(lr_dir, my_class)
                 shutil.copy2(img_path, class_dir)
 
-
-def load_data(data_dir, img_size, test_split, normalize=True):
+def load_data(data_dir, img_size, test_split, normalize=True, show_example=True):
     """Load data from training dir
 
     Args:
@@ -124,6 +124,15 @@ def load_data(data_dir, img_size, test_split, normalize=True):
 
     images = np.array(images)
     labels = np.array(labels)
+
+    if show_example:
+        seen_labels = []
+        for image, label in zip(images, labels):
+            if label not in seen_labels:
+                seen_labels.append(label)
+                plt.imshow(image)
+                plt.savefig(f"{label}.png")
+                # TODO: plt.show
 
     # Split into train/test
     X_train, X_test, y_train, y_test = train_test_split(
