@@ -6,15 +6,22 @@ classifier.
 import os
 import shutil
 import threading
+import time
 import zipfile
 from glob import glob
 from os.path import basename, isdir, isfile, join
+from queue import Queue
 
+import matplotlib.pyplot as plt
 import numpy as np
 import requests
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
+from tqdm import tqdm
+
+from constants import NFFT
+from sdr import MySDR
+from utils import get_spectrogram_image
 
 DATA_URIS = [
     "https://www.mathworks.com/supportfiles/spc/SpectrumSensing/SpectrumSensingTrainingData128x128.zip",
@@ -95,6 +102,7 @@ def format_for_logistic_regression():
                 class_dir = join(lr_dir, my_class)
                 shutil.copy2(img_path, class_dir)
 
+
 def load_data(data_dir, img_size, test_split, normalize=True, show_example=True):
     """Load data from training dir
 
@@ -130,9 +138,9 @@ def load_data(data_dir, img_size, test_split, normalize=True, show_example=True)
         for image, label in zip(images, labels):
             if label not in seen_labels:
                 seen_labels.append(label)
-                plt.imshow(image)
+                plt.imshow(image / 255.0)
                 plt.savefig(f"{label}.png")
-                # TODO: plt.show
+                plt.clf()
 
     # Split into train/test
     X_train, X_test, y_train, y_test = train_test_split(
@@ -194,3 +202,60 @@ def load_data(data_dir, img_size, test_split, normalize=True, show_example=True)
 
 def generate_training_data(num_images=800, sample_rate=61_440_000):
     pass
+
+
+def sdr_generate_training_data(num_images=700):
+    # First we will collect data on FM
+    data_dir = join(DATA_DIR, "lr_training_data", "AM")
+    if not isdir(data_dir):
+        os.mkdir(data_dir)
+    iq_buffer = Queue()
+    sdr = MySDR(iq_buffer)
+    # local_fm_stations = [99.9e6, 98.9e6, 96.1e6, 106.3e6, 96.9e6, 107.9e6, 94.3e6]
+    local_am_stations = [850e3, 630e3, 600e3]
+    for count in tqdm(range(220, num_images)):
+        for station in local_am_stations:
+            while not iq_buffer.empty():
+                _ = iq_buffer.get()
+            sdr.sdr.center_freq = station
+            time.sleep(0.2)  # wait for pll to lock
+            sdr.enable()
+            # discard the first sample batch as we wait for the sdr to change frequency
+            _ = iq_buffer.get()
+            samples = iq_buffer.get()
+            sdr.disable()
+            pil_image = get_spectrogram_image(
+                samples, NFFT, sdr.sdr.sample_rate, IMG_SIZE
+            )
+            fname = f"{data_dir}/{station}khz-{count}.png"
+            # print(f"Saving {fname}")
+            pil_image.save(fname)
+
+
+def sdr_generate_noise(num_images=1000):
+    data_dir = join(DATA_DIR, "lr_training_data", "Noise")
+    if not isdir(data_dir):
+        os.mkdir(data_dir)
+    iq_buffer = Queue()
+    sdr = MySDR(iq_buffer)
+    freqs = np.linspace(1.2e9 / 2, 1.2e9, num_images)
+    for freq in tqdm(freqs):
+        while not iq_buffer.empty():
+            _ = iq_buffer.get()
+        sdr.sdr.center_freq = freq
+        time.sleep(0.1)  # wait for pll to lock
+        sdr.enable()
+        samples = iq_buffer.get()
+        sdr.disable()
+        pil_image = get_spectrogram_image(samples, NFFT, sdr.sdr.sample_rate, IMG_SIZE)
+        fname = f"{data_dir}/{freq}hz.png"
+        # print(f"Saving {fname}")
+        pil_image.save(fname)
+
+
+def main():
+    sdr_generate_noise()
+
+
+if __name__ == "__main__":
+    main()
