@@ -97,7 +97,7 @@ def plot_confusion_matrix(y_true, y_pred, class_names, name):
     plt.clf()
 
 
-def evaluate_model_performance(model, sample_size=50, target_size=(128, 128)):
+def evaluate_model_performance(model, sample_size=500, target_size=(128, 128)):
     """
     Evaluates model performance on a random sample of images from a directory structure.
     """
@@ -134,7 +134,8 @@ def evaluate_model_performance(model, sample_size=50, target_size=(128, 128)):
 
     print(f"Evaluation for {model.friendly_name}")
     print("Classification Report:")
-    class_names.remove("Unknown")  # TODO(kkelso): unknown data
+    # class_names.remove("Unknown")  # TODO(kkelso): unknown data
+    # print(class_names)
     print(classification_report(y_true, y_pred, target_names=class_names))
 
     print("\nConfusion Matrix:")
